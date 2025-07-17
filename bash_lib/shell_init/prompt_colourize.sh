@@ -2,10 +2,8 @@
 import_func csi_strvars \
     || return
 
-_pr_colrz_docs() {
-
-    # keep the docs outside the function to keep it as lean as possible
-    : """Apply terminal control sequences to format text, especially the prompt.
+# docsh docs
+: """Apply terminal control sequences to format text, especially the prompt.
 
     Usage: prompt_colourize [options] s1 s2 s3
 
@@ -28,15 +26,12 @@ _pr_colrz_docs() {
 
     See the \"Terminal Control Sequences\" section of my Shell and Terminal Emulators
     notes file, and the \"Prompt\" section for the particulars of prompt strings.
-    """
-    docsh -TD
-    return
-}
+"""
 
 prompt_colourize() {
 
-    [[ $# -lt 3  || $1 == @(-h|--help) ]] &&
-        _pr_colrz_docs
+    [[ $# -lt 3  || $1 == @(-h|--help) ]] \
+        && { docsh -TD; return; }
 
     # Args and defaults
     local -i nclrs=8
@@ -79,17 +74,17 @@ prompt_colourize() {
         # User style sequence:
         # - green (user), blue (pwd), bold blue (prompt)
         # - expansion of ${param-word} subs word if param is unset
-        s1=${1:+${_cfg_g}${1}${_crs} }
-        s2=${2:+${_cfg_b}${2}${_crs} }
-        s3=${3:+${_cbo}${_cfg_b}${3}${_crs} }
+        s1=${1:+"${_cfg_g}${1}${_crs} "}
+        s2=${2:+"${_cfg_b}${2}${_crs} "}
+        s3=${3:+"${_cbo}${_cfg_b}${3}${_crs} "}
 
     elif [[ $c_style == root ]]
     then
         # Root style sequence:
         # - maroon (pwd), underlined (user), normal (prompt)
-        s1=${1:+${_cfg_m}${1}${_crs} }
-        s2=${2:+${_cul}${2}${_crs} }
-        s3=${3-${_crs} }
+        s1=${1:+"${_cfg_m}${1}${_crs} "}
+        s2=${2:+"${_cul}${2}${_crs} "}
+        s3=${3-}" "
     fi
 
     # prepend a reset code and print prompt string
