@@ -1,8 +1,8 @@
-ssh-rkh() {
+ssh-rm_kh() {
 
     : """Remove entry from known_hosts.
 
-        Usage: ssh-rkh <name-or-IP>
+        Usage: ssh-rm_kh <name-or-IP>
 
         - Useful e.g. when you know that the target host's IP has changed.
         - Calls \`ssh-keygen -R ...\`.
