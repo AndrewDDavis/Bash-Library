@@ -11,22 +11,26 @@ alias ls-perms="ls-acl"
 
 ls-acl() {
 
-    [[ $# -eq 0  || $1 == @(-h|--help) ]] &&
-        { docsh -TD; return; }
+    [[ $# -eq 0  || $1 == @(-h|--help) ]] \
+        && { docsh -TD; return; }
 
     local gf_cmd
     gf_cmd=$( builtin type -P getfacl ) \
         || return 9
 
-    # flags line is not printed with -t
-    local flags
-    flags=$( "$gf_cmd" "$@" | grep '^# flags:' )
+    local fn flags
+    for fn in "$@"
+    do
+        # flags line is not printed with -t
+        flags=$( "$gf_cmd" -p "$fn" | grep '^# flags:' )
 
-    # insert flags line into table
-    local table
-    mapfile -t table < <( "$gf_cmd" -t "$@" )
+        # insert flags line into table
+        local table
+        mapfile -t table < <( "$gf_cmd" -pt "$fn" )
 
-    wait $! || return
+        wait $! || return
 
-    printf '%s\n' "${table[0]}" ${flags:+"$flags"} "${table[@]:1}"
+        printf '%s\n' "${table[0]}" ${flags:+"$flags"} "${table[@]:1}"
+        (( $# == 1 )) || printf '\n'
+    done
 }
