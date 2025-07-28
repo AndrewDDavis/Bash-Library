@@ -1,5 +1,5 @@
 # TODO
-# - give mnt the ability to mount borg shares as well
+# - finish the borg-mounting functionality with non-default archive
 # - try mounting ftps shares using curlftpfs:
 #   https://wiki.archlinux.org/title/CurlFtpFS
 #   or rclone, but it says it doesn't support server side copy:
@@ -7,9 +7,10 @@
 # - add support for archivemount
 # - note, to mount a USB removable drive, use e.g.
 #    udisksctl mount -b /dev/sdc1
+# - See also: [sftpman](https://wiki.archlinux.org/title/Sftpman), [sshmnt](https://github.com/prurigro/sshmnt/blob/master/sshmnt)
 
 # deps
-import_func physpath \
+import_func physpath mtdir \
     || return
 
 # aliases for discoverability
@@ -17,9 +18,7 @@ alias sshfs-mnt='mnt -s'
 alias rclone-mnt='mnt -r'
 alias rmnt="mnt"
 
-mnt() {
-
-    : """Mount remote shares, backups, archives, or encrypted files
+: """Mount remote shares, backups, archives, or encrypted files
 
     Usage: mnt [opts] [-l | destination]
 
@@ -89,10 +88,12 @@ mnt() {
         boot using 'tmpfiles.d'.
 
     [1]: https://wiki.archlinux.org/title/Udisks
-    """
+"""
 
-    [[ $# -eq 0  ||  $1 == @(-h|--help) ]] &&
-        { docsh -TD; return; }
+mnt() {
+
+    [[ $# -eq 0  || $1 == @(-h|--help) ]] \
+        && { docsh -TD; return; }
 
     # ensure clean return
     trap '
@@ -151,8 +152,12 @@ mnt() {
             ( g | gio ) mcmd=${cmd_pths[gio]} ;;
             ( r | rclone ) mcmd=${cmd_pths[rclone]} ;;
             ( s | sshfs ) mcmd=${cmd_pths[sshfs]} ;;
-            ( b | borg ) mcmd=${cmd_pths[borg]} ; echo >&2 not implemented; return ;;
-            ( c | gocryptfs ) mcmd=${cmd_pths[gocryptfs]} ;;
+            ( b | borg )
+                mcmd=${cmd_pths[borg]}
+                loc_mntsdir='/mnt/borg' ;;
+            ( c | gocryptfs )
+                mcmd=${cmd_pths[gocryptfs]}
+                loc_mntsdir='/mnt/secure' ;;
             ( l ) action=list ;;
             ( u ) action=unmount ;;
             ( v ) verb=2 ;;
@@ -194,6 +199,11 @@ mnt() {
         return
     fi
 
+    # Default for borg
+    if (( $# == 0 )) && [[ $mcmd == */borg ]]
+    then
+        set -- '::'
+    fi
 
     # Can't go further without remote destination
     [[ $# -gt 0 ]] ||
@@ -232,6 +242,12 @@ mnt() {
             rem_user=hud
             rem_path=/mnt/backup
             dest_tag=nemo-backup
+        ;;
+        ( :: )
+            [[ -n ${BORG_REPO-} ]] \
+                || { err_msg 5 "BORG_REPO required"; return; }
+            dest_tag=${BORG_REPO##*'/'}
+            loc_mntpt=${loc_mntsdir}/${dest_tag}
         ;;
         ( * )
             # Not a known alias
@@ -299,7 +315,7 @@ mnt() {
 
     if  [[ $action == unmount  && $mcmd != */gio ]]
     then
-        # rclone, sshfs, and gocryptfs rely on fuse for unmount
+        # rclone, sshfs, gocryptfs, and borg rely on fuse for unmount
         local mnt_ln
         if mnt_ln=$( "${cmd_pths[grep]}" "${loc_mntpt%/}" <<< "$mount_out" )
         then
@@ -415,6 +431,24 @@ mnt() {
         ) \
             && "${cmd_pths[sed]}" >&2 "s:$HOME:~:" \
                 <<< "Mounted ${dest_nm} at '${loc_mntpt}'."
+
+    elif [[ $mcmd == */borg ]]
+    then
+        # e.g. borg mount -o allow_other --info --last 1 :: /tmp/borgmount
+        _chk_mntpt
+
+        local bcmd=( "$mcmd" mount -o allow_other --info )
+
+        if [[ $dest_nm == '::' ]]
+        then
+            bcmd+=( --last 1 )
+        fi
+
+        if run_vrb "${bcmd[@]}" "$dest_nm" "$loc_mntpt"
+        then
+            printf >&2 '%s\n' "Mounted ${dest_nm} at '${loc_mntpt}'."
+            cd "$loc_mntpt"
+        fi
 
     elif [[ $mcmd == */gio ]]
     then
