@@ -85,7 +85,6 @@ import_func() {
         && { docsh -TD; return; }
 
     # running with functrace causes the cleanup trap to run on every function return
-    # TODO: make the cleanup function more discerning
     [[ $( shopt -o functrace ) == *off ]] \
         || { err_msg 48 "import_func should not be run with functrace enabled"; return; }
 
@@ -294,9 +293,18 @@ import_func() {
             if [[ -v _local ]]
             then
                 # Use source-file dir as library path
-                local caller_srcfn
-                caller_srcfn=$( _impf_physpath "${BASH_SOURCE[2]}" ) \
-                    || { err_msg 9 "physpath error on BASH_SOURCE[2]: '${BASH_SOURCE[2]}'"; return; }
+                local fn caller_srcfn
+
+                # On import_func call from interactive shell, BASH_SOURCE[2] is undefined
+                if [[ -v BASH_SOURCE[2] ]]
+                then
+                    fn=${BASH_SOURCE[2]}
+                else
+                    fn=${PWD-}
+                fi
+
+                caller_srcfn=$( _impf_physpath "$fn" ) \
+                    || { err_msg 9 "physpath error on fn: '$fn'"; return; }
 
                 libdir=$( dirname -- "$caller_srcfn" )
 
