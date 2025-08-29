@@ -19,3 +19,6 @@
 [submodule "modules/wrap-txt"]
 	path = modules/wrap-txt
 	url = git@github.com:AndrewDDavis/Wrap-text.git
+[submodule "modules/borg_go"]
+	path = modules/borg_go
+	url = https://github.com/AndrewDDavis/borg_go
