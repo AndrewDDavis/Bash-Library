@@ -83,7 +83,7 @@ alias rsync-check='rsyncx --diff'
     This prints file deletions and a short data transfer summary. -h is also added
     for human readable data units.
 
-    Use -i to print a summary line for each changed file. Using -ii also prints a
+    Use -i to print a summary line for each changed file. Use -ii to also print a
     line for unchanged files. Refer to the rsync manpage under --itemize-changes to
     decode the summary line. Briefly:
 
@@ -92,11 +92,14 @@ alias rsync-check='rsyncx --diff'
         > for files sent and received, . for a file with unchanged content, or c for
         a directory to be created.
 
-      - The second char is the file type, which may be f, d, L, D, or S.
+      - The second char is the file type, which may be f (file), d (dir), L (symlink),
+        D (device), or S (special).
 
-      - The remaining characters are + for a newly created file. Otherwise, any that
-        are not . indicate what will be updated, or why the file is being
-        transferred, e.g. c for checksum, s for size, t for time, etc.
+      - The remaining characters are '+' for a newly created file. Otherwise, any that
+        are not '.' indicate an attribute that will be updated, or why the file is being
+        transferred, e.g. c (checksum), s (size), t (mod time), u (access time),
+        n (create time), b (u + n), p (permissions), o (owner),
+        g (group), a (ACL), x (extended attribute), etc.
 
     Issue '--info=help' to print the rsync's info flag options that may be used. The
     following options are recommended to achieve the noted effects. Note that
