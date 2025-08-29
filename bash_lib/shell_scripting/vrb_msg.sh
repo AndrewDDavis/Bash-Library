@@ -3,7 +3,7 @@ import_func is_nn_array \
     || return
 
 # docs
-: """Print a message to STDERR, depending on the verbosity level at run-time
+: """Print message to STDERR, depending on verbosity setting at run-time
 
     Usage: vrb_msg <level> \"message body\" ...
 
@@ -21,8 +21,7 @@ import_func is_nn_array \
     on the command line, or decremented with -q.
 
     Unlike the err_msg function, which prints log-style messages and sets a return
-    value, vrb_msg prints messages with a more subtle context element and always
-    returns true.
+    value, vrb_msg prints messages with minimal context and always returns true.
 
     Examples
 
@@ -61,18 +60,24 @@ vrb_msg() {
     _def_context() {
 
         # NB, within this function, FUNCNAME[2] is the caller
-        local i=3
-        while [[ $context == _* ]]
-        do
-            # underscore functions are probably not the context we want
-            if [[ -n ${FUNCNAME[i]-} ]]
-            then
-                context=${FUNCNAME[i]}
-            else
-                break
-            fi
-            (( i++ ))
-        done
+        if [[ ( -z ${context-} || ${context} == @(main|source) ) && -n ${BASH_SOURCE[2]-} ]]
+        then
+            context=${BASH_SOURCE[2]}
+
+        else
+            local i=3
+            while [[ $context == _* ]]
+            do
+                # underscore functions are probably not the context we want
+                if [[ -n ${FUNCNAME[i]-} ]]
+                then
+                    context=${FUNCNAME[i]}
+                else
+                    break
+                fi
+                (( i++ ))
+            done
+        fi
 
         # report LVL for functions that track nested calls
         # e.g. IMPORT_FUNC_LVL for import_func
@@ -112,7 +117,7 @@ vrb_msg() {
     printf >&2 '%s\n' "${context}${msgs[n]}"
     (( ++n ))
 
-    while [[ -n ${msgs[n]-} ]]
+    while [[ -v 'msgs[n]' ]]
     do
         # format and print subsequent lines
         printf >&2 '%s\n' "${spcs}${msgs[n]}"
