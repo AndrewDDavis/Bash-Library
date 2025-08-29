@@ -15,10 +15,10 @@
     functions are then imported into the current shell session by applying the
     source built-in command to the relevant files.
 
-    By default, the ~/.bash_lib/ directory is searched, but this may be overridden by
-    setting the BASH_FUNCLIB variable or using the -l flag. Symlinks within the library
-    tree are dereferenced and followed. Source files are expected to have a .sh or .bash
-    file extension.
+    By default, the directory containing import_func.sh is searched, which is
+    recommended to be ~/.bash_lib/. This may be overridden by setting the BASH_FUNCLIB
+    variable or using the -l flag. Symlinks within the library tree are dereferenced and
+    followed. Source files are expected to have a .sh or .bash file extension.
 
     Options
 
@@ -84,7 +84,7 @@ import_func() {
     [[ $# -eq 0  || $1 == @(-h|--help) ]] \
         && { docsh -TD; return; }
 
-    # running with functrace causes the cleanup trap to run on every function return
+    # running with functrace (AKA set -T) causes the cleanup trap to run on every function return
     [[ $( shopt -o functrace ) == *off ]] \
         || { err_msg 48 "import_func should not be run with functrace enabled"; return; }
 
@@ -290,16 +290,17 @@ import_func() {
         _def_libdir() {
 
             # define search root for source files
+            # libdir="$HOME"/.bash_lib
             if [[ -v _local ]]
             then
                 # Use source-file dir as library path
                 local fn caller_srcfn
 
-                # On import_func call from interactive shell, BASH_SOURCE[2] is undefined
                 if [[ -v BASH_SOURCE[2] ]]
                 then
                     fn=${BASH_SOURCE[2]}
                 else
+                    # on import_func call from interactive shell, BASH_SOURCE[2] is undefined
                     fn=${PWD-}
                 fi
 
@@ -312,6 +313,10 @@ import_func() {
             then
                 # use env var
                 libdir=$BASH_FUNCLIB
+
+            else
+                # use the parent dir of this file
+                libdir=$( dirname -- "$( _impf_physpath "${BASH_SOURCE[0]}" )" )
             fi
 
             # check libdir
@@ -495,7 +500,7 @@ import_func() {
     _chk_funcloop || return
 
     # define libdir and excluded paths for _all and _local
-    local libdir="$HOME"/.bash_lib
+    local libdir
     _def_libdir || return
     _excl_callers || return
 
