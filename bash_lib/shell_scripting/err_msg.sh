@@ -1,35 +1,3 @@
-# TODO:
-# - incorporate the functions from ~/Sync/Code/Backup/borg_go/bin/bgo_functions.sh
-#
-# - see and cf. log func
-#
-# - consider adding the date, maybe when an option is given:
-#   printf >&2 "%s %s %s\n" "$(date)" "${exc_fn--} [$msg_type]" "$*"
-#
-# - allow verbosity level setting, so only some messages are printed
-#   e.g., setting an env var in a function:
-#   __VERBOSE=6
-#
-#   function .log () {
-#     local LEVEL=${1}
-#     shift
-#     if [ ${__VERBOSE} -ge ${LEVEL} ]; then
-#       echo "[${LOG_LEVELS[$LEVEL]}]" "$@"
-#     fi
-#   }
-#
-#   # https://en.wikipedia.org/wiki/Syslog#Severity_level
-#   declare -A LOG_LEVELS
-#   LOG_LEVELS=( [0]="emerg"
-#                [1]="alert"
-#                [2]="crit"
-#                [3]="err"
-#                [4]="warning"
-#                [5]="notice"
-#                [6]="info"
-#                [7]="debug" )
-
-
 # dependencies
 import_func is_int \
     || return
@@ -37,56 +5,86 @@ import_func is_int \
 # suggestions
 import_func basename
 
-err_msg() {
+# alias for message with date
+alias log_msg='err_msg -d'
 
-    [[ $# -eq 0  || $1 == @(-h|--help) ]] && {
+: """Print log-style messages to stderr
 
-        : """Print log-style messages to stderr
+    Usage: err_msg [-d] <rs> [\"message body\" ...]
 
-        Usage: err_msg <rs> [\"message body\" ...]
+    The value of 'rs' should be one of:
 
-        The value of 'rs' should be one of:
+      - An integer, which sets the return status code of the err_msg call. Values
+        > 0 will print an error message, 0 triggers a warning.
+      - 'w' to print a warning (return status is 0).
+      - 'i' to print an info message (return status is 0).
+      - 'd' to print a debug message (return status is 0).
 
-          - An integer, which sets the return status code of the err_msg call. Values
-            > 0 will print an error message, 0 triggers a warning.
-          - 'w' to print a warning (return status is 0).
-          - 'i' to print an info message (return status is 0).
-          - 'd' to print a debug message (return status is 0).
+    The message body consists of 1 or more strings with diagnostic info to print
+    on STDERR. If multiple strings are provided, they will each be printed on a
+    separate line.
 
-        The message body consists of 1 or more strings with diagnostic info to print
-        on STDERR. If multiple strings are provided, they will each be printed on a
-        separate line.
+    Before the message body is printed, err_msg prints the message type and some
+    context information, such as the function chain that led to the err_msg call.
+    Formatting is applied to the output if STDERR is printing to an interactive
+    shell.
 
-        Before the message body is printed, err_msg prints the message type and some
-        context information, such as the function chain that led to the err_msg call.
-        Formatting is applied to the output if STDERR is printing to an interactive
-        shell.
+    Options
 
-        Examples
+      -d : print the date at the start of the message line
 
-            err_msg 1 \"valueError: foo should not be 0\"; return
+    Examples
 
-            err_msg w \"file missing, that's not great but OK\"
+        err_msg 1 \"valueError: foo should not be 0\"; return
 
-        Use in Shell Functions
+        err_msg w \"file missing, that's not great but OK\"
 
-        For error messages, err_msg issues a non-zero return status code. However, that
-        won't necessarily cause the calling function to return. To do that, you can:
+    Notes
 
-          - Use 'return' in the calling function (this preserves the value), e.g.:
+      - Returning from shell functions:
+
+        For error messages, err_msg returns with a non-zero status code, which is
+        commonly considered an error in shell scripting. However, that won't necessarily
+        cause the calling function to return. To do that, you can:
+
+          + Use 'return' in the calling function (this preserves the return status
+            value), e.g.:
 
             err_msg 2 'lorem ipsum'; return
 
-          - Set an error trap in the calling function, e.g. using the trap-err function:
+          + Set a trap in the calling function that returns on the ERR signal. For
+            additional context reporting, you may use the trap-err function:
 
             trap '
-                trap-err $?
+                trap-err \$?
                 return
             ' ERR
-        """
-        docsh -TD
-        return
-    }
+
+    Background
+
+      - A common framework for [log severity levels][^1] is:
+
+        0: emerg
+        1: alert
+        2: crit
+        3: err
+        4: warning
+        5: notice
+        6: info
+        7: debug
+
+        [^1]: https://en.wikipedia.org/wiki/Syslog#Severity_level
+"""
+
+err_msg() {
+
+    [[ $# -eq 0  || $1 == @(-h|--help) ]] \
+        && { docsh -TD; return; }
+
+    # date option
+    local _d
+    [[ $1 != '-d' ]] \
+        || { _d=1; shift; }
 
     # Return status (exit code) and severity level
     {
@@ -131,7 +129,7 @@ err_msg() {
         fi
     }
 
-    ## Define context of err_msg call
+    ## Define context of err_msg call (function name, source file, line)
     {
         local -A caller=( [name]='' [srcnm]='' [srcln]='' )
         local context report=()
@@ -139,7 +137,10 @@ err_msg() {
         # - calling function names (if any)
         [[ -v 'FUNCNAME[1]' ]] && {
 
-            caller[name]=${FUNCNAME[1]}'()'
+            caller[name]=${FUNCNAME[1]}
+
+            [[ ${FUNCNAME[1]} == @(main|source) ]] \
+                || caller[name]+='()'
 
             if [[ -v 'FUNCNAME[2]'  && $severity == @(ERROR|WARNING) ]]
             then
@@ -161,12 +162,18 @@ err_msg() {
         # create message string(s) to report context
         if [[ -z ${caller[name]}  && -z ${caller[srcnm]} ]]
         then
+            # e.g. interactive shell
             context="(unknown source, l. ${caller[srcln]})"
 
         elif [[ -z ${caller[name]}  && -n ${caller[srcnm]} ]]
         then
-            # e.g. from a sourced file, not a function
+            # unknown name, but has a file
             context="${caller[srcnm]}, l. ${caller[srcln]}'"
+
+        elif [[ ${caller[name]:(-2)} != '()' && -n ${caller[srcnm]} ]]
+        then
+            # not a function, but named e.g. 'source' or 'main'
+            context="${caller[name]} (l. ${caller[srcln]}) in '${caller[srcnm]}'"
 
         elif [[ $rs -eq 0 ]]
         then
@@ -180,12 +187,13 @@ err_msg() {
         [[ $rs -gt 0 ]] \
             && context="code $rs from $context"
     }
-    report=( "[$severity] ${context}:" )
+
+    report=( "${_d+"$( date +'%F %T %Z' ) "}[$severity] ${context}:" )
 
     ## For low-severity messages, try to fit on one line
     {
         local _ol_report
-        if  [[ $rs -eq 0
+        if [[ $rs -eq 0
             && ${#body_lines[*]} -eq 1 ]]
         then
             _ol_report="${report[0]}  ${body_lines[*]}"
