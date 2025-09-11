@@ -1,13 +1,22 @@
 # TODO
 # - finish the borg-mounting functionality with non-default archive
-# - try mounting ftps shares using curlftpfs:
-#   https://wiki.archlinux.org/title/CurlFtpFS
-#   or rclone, but it says it doesn't support server side copy:
-#   https://rclone.org/ftp/#limitations
 # - add support for archivemount
+# - See also, incorporate ideas from:
+#     + [sftpman](https://wiki.archlinux.org/title/Sftpman)
+#     + [sshmnt](https://github.com/prurigro/sshmnt/blob/master/sshmnt)
+# - try mounting ftps shares using curlftpfs. references:
+#     + https://curlftpfs.sourceforge.net/
+#     + https://wiki.archlinux.org/title/CurlFtpFS
+#     + https://github.com/JackSlateur/curlftpfs
+#     + https://github.com/ikn/curlftpfs-ng
+#     + https://superuser.com/questions/1677375/use-curlftpfs-in-a-secure-way-without-plaintext-and-world-readable-password-e
+#     + https://everything.curl.dev/usingcurl/netrc.html
+#     + https://packages.debian.org/search?searchon=all&keywords=curlftpfs
+#   or rclone, but it says it doesn't support server side copy:
+#     + https://rclone.org/ftp/#limitations
+#   maybe that's why I've used Samba
 # - note, to mount a USB removable drive, use e.g.
-#    udisksctl mount -b /dev/sdc1
-# - See also: [sftpman](https://wiki.archlinux.org/title/Sftpman), [sshmnt](https://github.com/prurigro/sshmnt/blob/master/sshmnt)
+#   udisksctl mount -b /dev/sdc1
 
 # deps
 import_func physpath mtdir \
