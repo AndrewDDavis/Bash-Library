@@ -10,9 +10,7 @@ import_func array_max
 # locate with ERE regex patterns
 alias eloci='loci --regex'
 
-loci() (
-
-    : """Convenient file search with locate
+: """Convenient file search with locate
 
     Usage: loci [options] <pattern> [...]
 
@@ -120,7 +118,9 @@ loci() (
             printf 'fn: %s\n' \"\${fn@Q}\"
         done < <( locate -b0 newline )
         \`\`\`
-    """
+"""
+
+loci() (
 
     [[ $# -eq 0  || $1 == @(-h|--help) ]] &&
         { docsh -TD; return; }
@@ -155,7 +155,7 @@ loci() (
     while getopts ':rjxWuv.C:d:l:-:' flag
     do
         # handle long options
-        _split_optarg flag
+        longopts flag
 
         # use var=${OPTARG:?} to display error msg and exit if OPTARG is Null or Unset
         case $flag in
@@ -222,7 +222,7 @@ loci() (
                 err_msg 2 "missing arg for '$OPTARG'"
                 return
             ;;
-            ( ??* )
+            ( * )
                 loc_opts+=( "--$flag" )
             ;;
         esac
@@ -322,26 +322,34 @@ loci() (
 
     _run_filt() {
 
+        trap 'return' ERR
+        trap 'trap - err return' RETURN
+
         ## Filter locate output if requested
         # - NB, can't use '<<< "..."' or 'var=$(...)' with null-terminated lines
         # - start with a null filter
         local _f1='^' _f2=''
 
         [[ -n ${_reqpath-} ]] && {
-            _f1+="$_reqpath"
-            _f2='.'
+            _f1+="${_reqpath}/"
+            _f2='./'
         }
 
-        _filt-sed "$_f1" "$_f2" < \
-            <( _run_loc "$@" ) \
-            || return
+        if [[ -z ${_reqpath-} ]] \
+            || [[ -n ${_reqpath-} && $_reqpath == @("$PWD"|"$( pwd -P )") ]]
+        then
+            _filt-sed "$_f1" "$_f2" < \
+                <( _run_loc "$@" )
+        else
+            _filt-grep "$_f1" < \
+                <( _run_loc "$@" )
+        fi
 
         ## Check locate return status from the process substitution
         # - NB, return status 1 is sometimes OK: it can be just nothing found, like
         #   grep. But it can also be an error, in which case it should print an error
         #   message.
-        wait $! \
-            || return
+        wait $!
     }
 
     _filt-grep() {
@@ -352,14 +360,15 @@ loci() (
         # usage:
         #   _filt-grep <pattern>
 
-        local grep_path
-        grep_path=$( builtin type -P grep ) \
+        local grep_cmd
+        grep_cmd=$( builtin type -P grep ) \
             || return 9
 
-        "$grep_path" ${_nulls:+-z} "$1"
+        "$grep_cmd" -E ${_nulls:+-z} "$1"
     }
 
     _filt-sed() {
+
         # filter locate results:
         #   - only print results matching pattern
         #   - replace pattern with a string
@@ -367,10 +376,11 @@ loci() (
         # usage:
         #   _filt-sed <pattern> <replacement>
 
-        local spth
-        spth=$( builtin type -P sed )
+        local sed_cmd
+        sed_cmd=$( builtin type -P sed ) \
+            || return 9
 
-        "$spth" -nE ${_nulls:+-z} "\\:$1: { s:$1:$2:; p; }"
+        "$sed_cmd" -nE ${_nulls:+-z} "\\:$1: { s:$1:$2:; p; }"
     }
 
 
