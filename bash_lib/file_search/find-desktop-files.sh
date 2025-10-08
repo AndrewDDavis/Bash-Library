@@ -4,7 +4,7 @@ import_func run_vrb \
 
 : """Print desktop file names
 
-    Usage: find-desktop-files [search-term]
+    Usage: find-desktop-files [-q] [search-term]
 
     Searches for .desktop files installed on the system. If the search term is provided,
     it is used to limit the results, and is treated as a case-insensitive argument to
@@ -20,6 +20,10 @@ import_func run_vrb \
       - ~/.local/share
       - /var/lib/flatpak/exports/share
 
+    Options
+
+      -q : don't print results, only communicate the return status
+
     The return status is 0 (true) if any desktop files are printed, or 1 for no matches.
     This makes it useful for testing, e.g. to set an alias to launch a desktop file only
     if the application is installed.
@@ -27,8 +31,12 @@ import_func run_vrb \
 
 find-desktop-files() {
 
-    [[ $# -gt 1  || ${1-} == @(-h|--help) ]] &&
-        { docsh -TD; return; }
+    local _q
+    [[ ${1-} == -q ]] \
+        && { _q=1; shift; }
+
+    [[ $# -gt 1  || ${1-} == @(-h|--help) ]] \
+        && { docsh -TD; return; }
 
     trap '
         unset -f _add_dirs
@@ -81,6 +89,9 @@ find-desktop-files() {
 
     find_cmd+=( -print0 )
 
+    [[ -v _q ]] \
+        && find_cmd+=( -quit )
+
     local find_out _verb=1
     mapfile -d '' find_out < \
         <( run_vrb "${find_cmd[@]}" )
@@ -91,5 +102,6 @@ find-desktop-files() {
     # return 1 for no matches
     [[ -v 'find_out[*]' ]] || return
 
-    printf '%s\n' "${find_out[@]}"
+    [[ -v _q ]] \
+        || printf '%s\n' "${find_out[@]}"
 }
