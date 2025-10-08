@@ -15,7 +15,7 @@ import_func is_nn_array \
     null-string message arguments cause an empty line to be printed before the first
     message line.
 
-    If the '_verb' varaible is not set, or its value is not an integer, it is
+    If the '_verb' variable is not set, or its value is not an integer, it is
     considered equal to 0. The recommended default is to set _verb=1 in the calling
     function. Then the value could be incremented, e.g. when the user passes a -v flag
     on the command line, or decremented with -q.
@@ -33,6 +33,9 @@ import_func is_nn_array \
 
       # may only print with -vv
       vrb_msg 3 \"the gg routine returned \$gg\"
+
+      # print this message, without bothering about _verb
+      vrb_msg 0 \"i really wanted you to see this\"
 """
 
 vrb_msg() {
