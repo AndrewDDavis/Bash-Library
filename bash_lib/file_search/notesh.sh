@@ -52,14 +52,16 @@ notesh() {
         && { docsh -TD; return; }
 
     # err trap and cleanup routine
+    trap 'return' ERR
     trap '
-        return
-    ' ERR
+        local c=$?
 
-    # TODO: check unset line below
-    trap '
-        unset -f _parse_opts _parse_ugopts _chk_simpcl _def_grep_args _select_fns
-        trap - err return
+        unset -f _parse_opts _parse_ugopts _chk_simpcl _chk_srchroot _select_fns
+        trap - err int return
+
+        # reissue SIGINT if an interrupt triggered the return
+        (( c == 130 )) \
+            && kill -s SIGINT "$$"
     ' RETURN
 
     _parse_opts() {
@@ -208,7 +210,9 @@ notesh() {
             then
                 # simple pattern: add regex for heading lines (markdown or adoc)
                 # - refer to the  _expand_keyword() function in scw()
-                _posargs[pat_i]="^[#=].*${_posargs[pat_i]}"
+                # - this specific form works around an odd bug with '^[#=]...', which
+                #   works for a search on fried or beans, but no refried!
+                _posargs[pat_i]="(^#|^=).*${_posargs[pat_i]}"
 
                 # match only files with a plausible extension
                 # - NB, matching no extension at the same time is tricky: it's possible with
@@ -220,29 +224,6 @@ notesh() {
             fi
         fi
     }
-
-    # _def_grep_args() {
-
-        # TODO: grep_cmdln becomes grep_args
-        #
-        # grep call is handled by ugrep-files now
-        #
-        # grep_cmdln=( "$( builtin type -P ugrep )" ) \
-        #     || return 9
-
-        # grep_cmdln+=( '-UIjRl0' )
-
-        # # pattern argument required
-        # [[ $# -gt 0 ]] \
-        #     || return 3
-
-        # # - all else should be grep options
-        # grep_ptn=${!#}
-        # grep_cmdln+=( "${@:1:$(($#-1))}" )
-        # shift $#
-
-        # grep_cmdln+=( -- "$gpat" "$doc_root" )
-    # }
 
     _chk_srchroot() {
 
@@ -292,7 +273,8 @@ notesh() {
     _select_fns() {
 
         # select a file from the matches
-        # - easy when there's only 1
+
+        # selection is easy when there's only 1
         if (( ${#matched_fns[@]} == 1 ))
         then
             sel_fns[0]=${matched_fns[1]}
@@ -346,10 +328,12 @@ notesh() {
         fi
 
         # Call the Bash builtin 'select'
-        # - sel is set to the displayed filename, or null when response is invalid
-        #   to select (not a listed number)
+        # - sel is set to the displayed filename, or null when response to select is
+        #   invalid (not a listed number)
         # - the REPLY variable has the actual response from the user
-        # - Ctrl-D prevents a selection and returns 1
+        # - Ctrl-D prevents a selection and returns 1, hence '|| return' below
+        # - Ctrl-C (interrupt) skips the || clause, but triggers the trap on INT in the
+        #   parent function, since SIGINT traps are inherited
         local PS3 sel nums
         PS3=$'\n''File number(s) to open (e.g. 2, or 1,3,5; can also use a = all or ^D = cancel)'$'\n  : '
 
@@ -424,10 +408,17 @@ notesh() {
     # match files and select one to open
     local matched_fns=() sel_fns=()
     ugrep-files --to-array=matched_fns "${_optargs[@]}" "${_posargs[@]}"
+
+    # return and run cleanup in case the user hits CTRL-c at selection
+    # - ugrep-files clears the INT trap, so this needs to go below
+    trap 'return 130' SIGINT
+
     _select_fns
 
     run_vrb "${opener[@]}" "${sel_fns[@]}"
 }
+
+
 
 # TODO:
 # - syntax highlighting:
@@ -437,28 +428,6 @@ notesh() {
 #
 # - create project aliases, like --bread, or --project=bread
 #
-# - if a headings search matches nothing, try full text
+# - if a headings search matches nothing, automatically try full text
 #
 # - allow GNU grep as well
-#
-# - deal with ugrep pattern problem:
-#
-#   in ~/Documents/Food and Diet:
-#
-#     ugrep -EIrj '^[#=].*fried' .
-#     # 2 matches: one with '= Fried ...', one with '# Easy Refried ...'
-#
-#     ugrep -EIrj '^[#=].*refried' .
-#     # 0 matches
-#
-#     ugrep -EIrj '^#.*refried' .
-#     # 1 match
-#
-#     ugrep -EIr '^[#=].*Refried' .
-#     # 1 match
-#
-#     ugrep -EIri '^[#=].*refried' .
-#     # 0 matches
-#
-#     ugrep -EIri '^[#=].*beans' .
-#     # 6 matches (upper and lower, -i is working; all after #)
