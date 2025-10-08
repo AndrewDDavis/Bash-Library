@@ -52,10 +52,14 @@ run_vrb() {
     [[ $# -eq 0  || $1 == @(-h|--help) ]] \
         && { docsh -TD; return; }
 
-    # cleanup routine
+    # err trap and cleanup routine
+    trap '
+        return
+    ' ERR
+
     trap '
         unset -f _parse_opts _parse_posargs _rslv_cmd
-        trap - return
+        trap - err return
     ' RETURN
 
     _parse_opts() {
@@ -161,32 +165,35 @@ run_vrb() {
     # define options and verbosity setting
     local -I _verb
     local -i n _P
-    _parse_opts "$@" || return
+    _parse_opts "$@"
     shift $n
 
     # parse positional args and define the command line to be executed
     local env_args=() cmd_args=()
-    _parse_posargs "$@" || return
+    _parse_posargs "$@"
     shift $#
 
-    # resolve command name if indicated
-    [[ -v _P ]] && { _rslv_cmd || return; }
+    [[ -v _P ]] && {
+        # resolve command name
+        _rslv_cmd
+    }
 
-    # enable xtrace if indicated, and not already set
+    local -i ec=0
     local setx
     [[ _verb -gt 1  && $- != *x* ]] && {
+        # enable xtrace
         setx=1
         set -x
     }
 
     # run command line
-    "${env_args[@]}" "${cmd_args[@]}"
+    "${env_args[@]}" "${cmd_args[@]}" \
+        || { ec=$?; } 2>/dev/null
 
     {
-        n=$?
         [[ -v setx ]] \
             && set +x
-
     } 2>/dev/null
-    return $n
+
+    return $ec
 }
