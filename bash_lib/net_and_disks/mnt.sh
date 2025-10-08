@@ -313,11 +313,18 @@ mnt() {
     _chk_mntpt() {
 
         # ensure mountpoint is an empty dir that exists
-        if [[ ! -e $loc_mntpt ]]
+        if [[ -L $loc_mntpt ]]
+        then
+            err_msg 6 "symbolic link at mount-point path: '$loc_mntpt'"
+            return
+
+        elif [[ ! -e $loc_mntpt ]]
         then
             /bin/mkdir "$loc_mntpt"
+
         else
-            mtdir "$loc_mntpt"
+            mtdir "$loc_mntpt" \
+                || { err_msg 7 "mount-point is not an empty directory: '$loc_mntpt'"; return; }
         fi
     }
 
