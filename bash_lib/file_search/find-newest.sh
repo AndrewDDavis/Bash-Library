@@ -38,25 +38,37 @@ find-newest() {
     local i flag OPTARG OPTIND=1
     while getopts ':n:' flag
     do
+        i=$(( OPTIND-1 ))
         case $flag in
             ( n )
-                n_lines=$OPTARG
+                # arg should be positive int
+                if is_int -p "$OPTARG"
+                then
+                    n_lines=$OPTARG
 
-                # ensure positive int
-                [ "$n_lines" -gt 0 ] \
-                    || return 2
-                ;;
+                elif [[ ${!i} == -n* ]]
+                then
+                    # may have been a find option like '-name'
+                    (( OPTIND-- ))
+                    break
+
+                else
+                    # invalid arg, like '-n NAN'
+                    err_msg 3 "invalid argument for -n: '$OPTARG'"
+                    return
+                fi
+            ;;
             ( \? )
                 # Unknown option: preserve it for 'find'
-                i=$(( OPTIND-1 ))
-                [[ ${!i} == "-$OPTARG" ]] \
+                # - check if OPTIND was incremented (e.g. arg was '-a')
+                [[ ${!i} == -"$OPTARG" ]] \
                     && (( OPTIND-- ))
                 break
-                ;;
+            ;;
             ( : )
-                err_msg 2 "missing argument for ${OPTARG}"
+                err_msg 2 "missing argument for '$OPTARG'"
                 return
-                ;;
+            ;;
         esac
     done
     shift $(( OPTIND-1 ))
@@ -74,7 +86,7 @@ find-newest() {
 
         elif [[ $arg == -* ]]
         then
-            # find expression
+            # find expression was passed
             _expr=1
             break
 
@@ -86,12 +98,13 @@ find-newest() {
 
     if ! (( _expr ))
     then
-        if (( $# == 0 ))
-        then
-            set -- -L . -name .git -prune -o -type f
-        else
-            set -- "$@" -name .git -prune -o -type f
-        fi
+        # by default, list files, but exclude .git
+
+        # default to search in current dir with -L
+        (( $# == 0 )) \
+            && set -- -L .
+
+        set -- "$@" -name .git -prune -o -type f
     fi
 
     run_vrb -P find "$@" -printf "%TF %TH:%TM %p\n" \
