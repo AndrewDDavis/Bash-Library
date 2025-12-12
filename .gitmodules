@@ -1,24 +1,24 @@
 [submodule "modules/aptx"]
 	path = modules/aptx
-	url = git@github.com:AndrewDDavis/Aptx.git
+	url = https://github.com/AndrewDDavis/Aptx.git
 [submodule "modules/docsh"]
 	path = modules/docsh
-	url = git@github.com:AndrewDDavis/docsh.git
+	url = https://github.com/AndrewDDavis/docsh.git
 [submodule "modules/physpath"]
 	path = modules/physpath
-	url = git@github.com:AndrewDDavis/Physpath.git
+	url = https://github.com/AndrewDDavis/Physpath.git
 [submodule "modules/getopts_long"]
 	path = modules/getopts_long
-	url = git@github.com:AndrewDDavis/getopts_long.git
+	url = https://github.com/AndrewDDavis/getopts_long.git
 [submodule "modules/rename-files"]
 	path = modules/rename-files
-	url = git@github.com:AndrewDDavis/Rename-Files.git
+	url = https://github.com/AndrewDDavis/Rename-Files.git
 [submodule "modules/trash_wrapper"]
 	path = modules/trash_wrapper
-	url = git@github.com:AndrewDDavis/trash_wrapper.git
+	url = https://github.com/AndrewDDavis/trash_wrapper.git
 [submodule "modules/wrap-txt"]
 	path = modules/wrap-txt
-	url = git@github.com:AndrewDDavis/Wrap-text.git
+	url = https://github.com/AndrewDDavis/Wrap-text.git
 [submodule "modules/borg_go"]
 	path = modules/borg_go
-	url = https://github.com/AndrewDDavis/borg_go
+	url = https://github.com/AndrewDDavis/borg_go.git
