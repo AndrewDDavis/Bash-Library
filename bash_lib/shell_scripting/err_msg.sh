@@ -192,13 +192,17 @@ err_msg() {
 
     ## For low-severity messages, try to fit on one line
     {
-        local _ol_report
+        local _ol_report _w
         if [[ $rs -eq 0
             && ${#body_lines[*]} -eq 1 ]]
         then
             _ol_report="${report[0]}  ${body_lines[*]}"
 
-            [[ ${#_ol_report} -lt $( tput cols ) ]] \
+            # default text width = 80, e.g. for Systemd jobs
+            _w=$( tput cols 2>/dev/null ) \
+                || _w=80
+
+            [[ ${#_ol_report} -lt "$_w" ]] \
                 || unset _ol_report
         fi
     }
