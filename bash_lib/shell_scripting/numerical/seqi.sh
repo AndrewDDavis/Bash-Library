@@ -7,8 +7,8 @@ seqi() {
         This function prints integers from first to last, in steps of increment. If
         first is omitted, it defaults to 1. If increment is omitted, it defaults to 1
         if last is greater than first, otherwise to -1. The increment may not be 0. The
-        sequence ends when adding the increment would make a number greater than last,
-        or less than last then the increment is negative.
+        sequence ends when adding the increment would make a number greater than last 
+        (less than last with a negative increment).
 
         Although seqi works similarly to GNU seq, there are differences:
 
