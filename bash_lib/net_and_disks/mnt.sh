@@ -4,19 +4,12 @@
 # - See also, incorporate ideas from:
 #     + [sftpman](https://wiki.archlinux.org/title/Sftpman)
 #     + [sshmnt](https://github.com/prurigro/sshmnt/blob/master/sshmnt)
-# - try mounting ftps shares using curlftpfs. references:
-#     + https://curlftpfs.sourceforge.net/
-#     + https://wiki.archlinux.org/title/CurlFtpFS
-#     + https://github.com/JackSlateur/curlftpfs
-#     + https://github.com/ikn/curlftpfs-ng
-#     + https://superuser.com/questions/1677375/use-curlftpfs-in-a-secure-way-without-plaintext-and-world-readable-password-e
-#     + https://everything.curl.dev/usingcurl/netrc.html
-#     + https://packages.debian.org/search?searchon=all&keywords=curlftpfs
-#   or rclone, but it says it doesn't support server side copy:
-#     + https://rclone.org/ftp/#limitations
-#   maybe that's why I've used Samba
 # - note, to mount a USB removable drive, use e.g.
 #   udisksctl mount -b /dev/sdc1
+# - allow sshfs to pull the connection details from the ~/.ssh/config file, when
+#   provided with just a hostname -- this script may need to parse that file
+#   too, to get, e.g. a hostname value for display, etc. Or use a ~/.config/mnt
+#   config file
 
 # deps
 import_func physpath mtdir \
@@ -25,6 +18,7 @@ import_func physpath mtdir \
 # aliases for discoverability
 alias sshfs-mnt='mnt -s'
 alias rclone-mnt='mnt -r'
+alias gio-mnt='mnt -g'
 alias rmnt="mnt"
 
 : """Mount remote shares, backups, archives, or encrypted files
@@ -58,6 +52,8 @@ alias rmnt="mnt"
       - squamish
       - nemo
       - nemo-backup
+      - nemo-ftp (using rclone)
+      - ad-pixel8
 
     Notes
 
@@ -116,7 +112,7 @@ mnt() {
     ' RETURN
 
     # Command paths
-    # default remote command is first valid of the list
+    # - default remote command is first valid of the list
     local -A cmd_pths
     local rcmd_nms=( sshfs rclone gio )
     local a p mcmd
@@ -251,6 +247,20 @@ mnt() {
             rem_user=hud
             rem_path=/mnt/backup
             dest_tag=nemo-backup
+        ;;
+        ( nemo-ftp )
+            rem_host=nemo.in.spinup.ca
+            rem_user=hud
+            dest_tag=nemo-ftp
+
+            mcmd=${cmd_pths[rclone]} \
+                || err_msg 9 "rclone executable not found"
+        ;;
+        ( ad-pixel8 )
+            # pixel8 phone
+            # sshfs pulls option port=8022 from the ~/.ssh/config file
+            rem_host=ad-pixel8.in.spinup.ca
+            rem_user=u0_a445
         ;;
         ( :: )
             [[ -n ${BORG_REPO-} ]] \
@@ -389,7 +399,14 @@ mnt() {
         # - send to background
         mopts+=( --daemon )
         # - buffer files to disk to support normal file system operations (e.g. seeking in files)
+        # - maybe full instead?
         mopts+=( --vfs-cache-mode writes )
+
+        if [[ $dest_tag == *-ftp ]]
+        then
+            # for nemo
+            mopts+=( --ftp-no-check-certificate )
+        fi
 
         (   set -x
             "$mcmd" mount "${mopts[@]}" "$dest_tag": """$loc_mntpt"
