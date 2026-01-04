@@ -290,24 +290,22 @@ import_func() {
         _def_libdir() {
 
             # define search root for source files
-            # libdir="$HOME"/.bash_lib
             if [[ -v _local ]]
             then
-                # Use source-file dir as library path
-                local fn caller_srcfn
-
+                # Use dir containing source-file as library path
                 if [[ -v BASH_SOURCE[2] ]]
                 then
-                    fn=${BASH_SOURCE[2]}
+                    local caller_srcfn
+                    caller_srcfn=$( _impf_physpath "${BASH_SOURCE[2]}" ) \
+                        || { err_msg 9 "physpath error on fn: '${BASH_SOURCE[2]}'"; return; }
+
+                    libdir=$( dirname -- "$caller_srcfn" )
+
                 else
-                    # on import_func call from interactive shell, BASH_SOURCE[2] is undefined
-                    fn=${PWD-}
+                    # BASH_SOURCE[2] is undefined for import_func call from interactive shell
+                    libdir=$( _impf_physpath "${PWD-}" ) \
+                        || { err_msg 9 "physpath error on PWD: '${PWD-}'"; return; }
                 fi
-
-                caller_srcfn=$( _impf_physpath "$fn" ) \
-                    || { err_msg 9 "physpath error on fn: '$fn'"; return; }
-
-                libdir=$( dirname -- "$caller_srcfn" )
 
             elif [[ -n ${BASH_FUNCLIB-} ]]
             then
@@ -316,6 +314,7 @@ import_func() {
 
             else
                 # use the parent dir of this file
+                # - e.g. ~/.bash_lib
                 libdir=$( dirname -- "$( _impf_physpath "${BASH_SOURCE[0]}" )" )
             fi
 
@@ -432,7 +431,8 @@ import_func() {
             mapfile -t grep_out < <( "${grep_cmdln[@]}" )
 
             (( ${#grep_out[@]} == "${#funcs[@]}" )) \
-                || { err_msg 63 "number of grep results and funcs do not match:" "$( declare -p grep_out funcs )"; return; }
+                || { err_msg 63 "incorrect number of search results compared to funcs:" \
+                                "$( declare -p funcs grep_out )"; return; }
 
             # src_fns will be an assoc. array of functions to source files
             local ln rgx fn func
@@ -511,6 +511,8 @@ import_func() {
         _def_find_cmd || return
 
         # Run find and import the selected files
+        # - NB, defining the find command line and running it only takes ~ 10 ms
+
         local fn
         while IFS='' read -rd '' fn <&3
         do
@@ -545,17 +547,18 @@ import_func() {
     return 0
 }
 
+
 # Import supporting functions when sourcing this file
 # - We don't use a _deps array for this, since there can be a namespace collision when
 #   the this file is sourced, and _deps is defined in the caller
 # - NB, since these functions are used within import_func(), they should not call
 #   import_func -l when they are executed. This could set up an endless loop!
 #   OTOH, calling import_func in the base of their source files is fine.
-#   Of course, these functions are some of the most important ones to the system, so
-#   their stability is paramount, and this call will only fail on very serious problems,
-#   such as missing libdir or grep command.
+#   Of course, these functions are some of the most important ones to the bash_lib
+#   system, so their stability is paramount. This call will only fail on very serious
+#   problems, such as failing to find libdir or the grep command.
 import_func -f physpath err_msg docsh \
     || return
 
-# these too, but we can fall back on the binaries
+# import these too, but we can fall back on the binaries
 import_func basename dirname
