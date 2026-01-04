@@ -1,0 +1,11 @@
+{
+	"folders": [
+		{
+			"path": "../bash_lib/file_ops"
+		},
+		{
+			"path": "../bash_lib/file_search"
+		}
+	],
+	"settings": {}
+}
