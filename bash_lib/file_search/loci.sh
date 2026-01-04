@@ -1,9 +1,3 @@
-# TODO
-# - test loci long-option behaviour, esp --dir and --exec
-#   I think it will work with --dir=foo, but not --dir 'foo'
-# - add option to filter with grep pattern, rather than only using sed
-# - is std-args useful here?
-
 # dependencies
 import_func array_max
 
@@ -78,7 +72,8 @@ alias eloci='loci --regex'
         arguments.
 
       -u (--updatedb)
-      : Run \`updatedb\` to update the locate database before searching.
+      : Run \`updatedb\` to update the locate database before searching. This will
+        require entering a password for sudo if the database is owned by root.
 
       -v (--verbose)
       : Print the locate command to STDERR as it is run.
@@ -138,7 +133,7 @@ loci() (
 
     # default 'locate -ib'
     # - NB adding -w later in the options over-rides -b here, so that works
-    # - NB however, the -j / --case and smart-case logic depends on loc_opts[0]=-ib
+    # - NB the -j / --case and smart-case logic depends on loc_opts[0]=-ib
     local loc_opts=( -ib )
 
     # default 'postprocessing' is just print to stdout
@@ -238,38 +233,50 @@ loci() (
     then
         # updatedb run requested
 
-        if [[ $( uname -s ) == Darwin ]]
-        then
-            udb_cmd=$( builtin type -P locate.updatedb )
-        else
-            udb_cmd=$( builtin type -P updatedb )
-        fi
+        local udb_cmd=updatedb
+        [[ $( uname -s ) == Darwin ]] &&
+            udb_cmd=locate.updatedb
 
+        udb_cmd=$( builtin type -P "$udb_cmd" ) \
+            || { err_msg 11 "no command found for updatedb"; return; }
+
+        # use LOCATE_PATH if set, otherwise default database path
+        local udb_fn
         if [[ -v LOCATE_PATH ]]
         then
-            # if LOCATE_PATH is set, the db file should be owned by the calling user
-            [[ $( stat -c '%u' "$LOCATE_PATH" ) == "$EUID" ]] ||
-                return
+            udb_fn=$LOCATE_PATH
+        elif [[ -e /var/lib/plocate/plocate.db ]]
+        then
+            udb_fn=/var/lib/plocate/plocate.db
+        elif [[ -e /var/lib/mlocate/mlocate.db ]]
+        then
+            udb_fn=/var/lib/mlocate/mlocate.db
+        else
+            err_msg 13 "locate database file could not be found"
+            return
+        fi
 
+        # if the database file is owned by root, we need root to update it
+        # - typically:
+        #   -rw-r----- 1 root plocate 14M /var/lib/plocate/plocate.db
+        if [[ $( stat -c '%u:%G' "$udb_fn" ) == '0:'*locate ]] \
+            && [[ $( stat -c '%a' "$udb_fn" ) == '640' ]]
+        then
+            if [[ $EUID == 0 ]]
+            then
+                "$udb_cmd" || return
+            else
+                sudo "$udb_cmd" || return
+            fi
+
+        elif [[ $( stat -c '%u' "$udb_fn" ) == "$EUID" ]]
+        then
+            # the calling user owns the database file
             "$udb_cmd"
 
         else
-            # check that the database file is as expected:
-            # -rw-r----- 1 root plocate 14M /var/lib/plocate/plocate.db
-            local udb_fn=/var/lib/plocate/plocate.db
-
-            [[ $( stat -c '%u:%g' "$udb_fn" ) == '0:114' ]] ||
-                return
-
-            [[ $( stat -c '%a' "$udb_fn" ) == '640' ]] ||
-                return
-
-            if [[ $EUID == 0 ]]
-            then
-                "$udb_cmd"
-            else
-                sudo "$udb_cmd"
-            fi
+            err_msg 14 "database file permissions not as expected:" "$(ls -l "$udb_fn")"
+            return
         fi
 
         # return if no patterns were specified
@@ -327,7 +334,7 @@ loci() (
 
         ## Filter locate output if requested
         # - NB, can't use '<<< "..."' or 'var=$(...)' with null-terminated lines
-        # - start with a null filter
+        # - start with an all-matching filter
         local _f1='^' _f2=''
 
         [[ -n ${_reqpath-} ]] && {
@@ -393,8 +400,8 @@ loci() (
 
     { _run_filt ${_nulls:+-0} "${loc_args[@]}" \
         | xargs -r ${_nulls:+-0} "${_pp_cmd[@]}"
-
-    }   && ps_arr=( "${PIPESTATUS[@]}" ) \
+    } \
+        && ps_arr=( "${PIPESTATUS[@]}" ) \
         || ps_arr=( "${PIPESTATUS[@]}" )
 
     # maybe use a mkfifo to capture the exit code:
