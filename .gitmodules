@@ -25,3 +25,6 @@
 [submodule "modules/rtun"]
 	path = modules/rtun
 	url = git@github.com:AndrewDDavis/rtun.git
+[submodule "modules/htpc_scripts"]
+	path = modules/htpc_scripts
+	url = git@github.com:AndrewDDavis/htpc_scripts.git
