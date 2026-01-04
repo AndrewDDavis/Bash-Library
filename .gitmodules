@@ -22,3 +22,6 @@
 [submodule "modules/borg_go"]
 	path = modules/borg_go
 	url = https://github.com/AndrewDDavis/borg_go.git
+[submodule "modules/rtun"]
+	path = modules/rtun
+	url = git@github.com:AndrewDDavis/rtun.git
