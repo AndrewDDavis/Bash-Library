@@ -46,9 +46,9 @@ tarx() {
     Usage: tarx [options] <archive> [path ...]
 
     This wrapper function allows for quick file extraction from a tar archive. The tar
-    command used is 'tar -xkv', so that existing files are left untouched. To overwrite
-    existing files instead, use --overwrite, or refer to the manpage for more precise
-    options.
+    command used is 'tar -xkv', so that existing files on disk are not overwritten
+	during the extraction. To overwrite instead, use --overwrite, or refer to the
+	manpage for more precise options.
 
     Other relevant options
 
