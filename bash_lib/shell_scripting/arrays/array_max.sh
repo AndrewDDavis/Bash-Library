@@ -30,7 +30,10 @@ array_max() {
         || { err_msg 3 "non-empty array required, got '${!__am_arrnm__}'"; return; }
 
 
-    trap 'unset -f _elem_isint' RETURN
+    trap '
+        unset -f _elem_isint
+        trap - return
+    ' RETURN
 
     _elem_isint() {
 
