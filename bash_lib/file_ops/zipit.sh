@@ -12,28 +12,28 @@ zipit() (
 
         zipit [options] [archive[.zip]] path1 [path2 ...]
 
-    If only 1 non-option argument is issued, $FUNCNAME will create an archive
+    If only 1 non-option argument is issued, zipit will create an archive
     in the same directory and named the same way as the input path, with
     a .zip file extension added.
 
-	Optional arguments to zip may be added, as usual (see the man page).
+    Optional arguments to zip may be added, as usual (see the man page).
 
-	Expand zip archives using e.g. \`unzip arch1.zip\`. Unzip to stdout with
-	'-p' (pipe).
+    Expand zip archives using e.g. \`unzip arch1.zip\`. Unzip to stdout with
+    '-p' (pipe).
 
-	Examples
+    Examples
 
-	- zip in-place with max compression:
+    - zip in-place with max compression:
 
-	    zipit -9 file.txt
+        zipit -9 file.txt
 
-	Zip Command Notes
+    Zip Command Notes
 
     - The form of a zip command is
       zip [opts] zipfile file(s)
 
-    - The current default options for the zip command are in ZIPOPT:
-      '${ZIPOPT}'
+    - The default options for the zip command are in ZIPOPT, currently:
+      '${ZIPOPT-}'
 
     - Pattern matching by zip is similar to globs, using the special chars
       ?, *, , and [...]. Files beginning with '.' are not treated specially.
@@ -68,13 +68,13 @@ zipit() (
      -y : archive symlinks as symlinks.
     """
 
-	[[ $# -eq 0 || $1 == @(-h|--help) ]] &&
-	    { docsh -TD; return; }
+    [[ $# -eq 0 || $1 == @(-h|--help) ]] &&
+        { docsh -TD; return; }
 
     # Parse args
     # Count non-option args
     # - last arg must be a source path, unless using zip -@ ...
-    n_args=$(printf '%s\0' "$@" | egrep -zc '^[^-]')
+    n_args=$( printf '%s\0' "$@" | egrep -zc '^[^-]' )
 
     # Introduce archive name if needed
     # - This is only simple for 1 non-option arg, otherwise you would need to
