@@ -323,6 +323,8 @@ mnt() {
     _chk_mntpt() {
 
         # ensure mountpoint is an empty dir that exists
+        local -i ec
+
         if [[ -L $loc_mntpt ]]
         then
             err_msg 6 "symbolic link at mount-point path: '$loc_mntpt'"
@@ -330,8 +332,22 @@ mnt() {
 
         elif [[ ! -e $loc_mntpt ]]
         then
-            /bin/mkdir "$loc_mntpt"
-
+            /bin/mkdir "$loc_mntpt" \
+                || {
+                ec=$?
+                # handle "Transport endpoint is not connected" due to interrupted connection
+                # - this leaves a directory that can't be inspected with file or stat,
+                #   and 'test -e' returns false.
+                if mnt_ln=$( "${cmd_pths[grep]}" "${loc_mntpt%/}" <<< "$mount_out" ) \
+                    && [[ "$mnt_ln" == *fuse* ]]
+                then
+                    err_msg i "attempting to clear stale mount"
+                    "${cmd_pths[fusermount]}" -zu "$loc_mntpt" \
+                        || return
+                else
+                    return $ec
+                fi
+            }
         else
             mtdir "$loc_mntpt" \
                 || { err_msg 7 "mount-point is not an empty directory: '$loc_mntpt'"; return; }
