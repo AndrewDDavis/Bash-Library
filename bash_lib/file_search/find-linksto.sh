@@ -17,7 +17,7 @@ find-linksto() {
     Examples
 
       # find links to, or into, the Config-Sync project directory
-      find-linksto -F '/Config-Sync' ~/
+      find-linksto '/Config-Sync' ~/
 
       # find all links within the user's .local directory
       find-linksto . ~/.local
