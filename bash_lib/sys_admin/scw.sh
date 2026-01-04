@@ -258,16 +258,16 @@ scw() {
     # prepend sudo, if required
     #  - NB, env vars should be set as sudo VAR=value command ...
     #    e.g. for setting SYSTEMD_COLORS=1
-	if [[  $scctx == system
-	    && $( id -u ) -ne 0
+    if [[  $scctx == system
+        && $( id -u ) -ne 0
         && $sccmd != @(list-*|ls*|find|status)
-	]]
-	then
+    ]]
+    then
         sc_cmdln=( sudo "${sc_cmdln[@]}" )
 
-	    # prompt for password immediately, if necessary
-	    sudo true \
-	        || return
+        # prompt for password immediately, if necessary
+        sudo true \
+            || return
     fi
 
 
@@ -278,7 +278,9 @@ scw() {
     if ! [[ $sccmd =~ $lscmd_ptn ]]
     then
         # not a listing-type command
-        "${sc_cmdln[@]}" "${scargs[@]}"
+        # - avoid triggering the trap, e.g. on 'status' for a failed service
+        "${sc_cmdln[@]}" "${scargs[@]}" \
+            || return
 
     else
         # further arguments should be options and pattern(s)
@@ -304,10 +306,10 @@ scw() {
             fi
         done
 
-        # return status=1 should not print error message (i.e. no matches)
+        # return status=1 (i.e. no matches) should not trigger the trap
         local -i rs=0
-        run_vrb "${sc_cmdln[@]}" || {
-
+        run_vrb "${sc_cmdln[@]}" \
+            || {
             rs=$?
             (( rs < 2 )) && return $rs
             ( exit $rs )
