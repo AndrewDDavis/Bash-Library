@@ -52,14 +52,15 @@ func-where() {
         fi
     }
 
-    # record state of extdebug, and ensure it's enabled
-    local _ed_keepon
-    if shopt extdebug >/dev/null
-    then
-        _ed_keepon=1
-    else
-        shopt -s extdebug
-    fi
+    # # record state of extdebug, and ensure it's enabled
+    # - now setting in the subshell with declare
+    # local _ed_keepon
+    # if shopt extdebug >/dev/null
+    # then
+    #     _ed_keepon=1
+    # else
+    #     shopt -s extdebug
+    # fi
 
 
     # Gather func defn info
@@ -75,7 +76,7 @@ func-where() {
     local func_nm dec_out src_fn src_ln
     for func_nm in "$@"
     do
-        dec_out=$( declare -F "$func_nm" ) \
+        dec_out=$( shopt -s extdebug; declare -F "$func_nm" ) \
             || { _func_not_found; continue; }
 
         [[ $dec_out =~ $regex_ptn ]]
@@ -126,7 +127,8 @@ func-where() {
             local -a src_lines
             mapfile -t -O1 src_lines < "$src_fn"
 
-            if ! [[ ${src_lines[src_ln]} =~ $funcdef_ptn ]]
+            if [[ -z ${src_lines[src_ln]-} ]] \
+                || [[ ! ${src_lines[src_ln]} =~ $funcdef_ptn ]]
             then
                 # search for the correct line
                 local i m
@@ -151,7 +153,7 @@ func-where() {
         fi
     done
 
-    # reset extdebug
-    [[ -v _ed_keepon ]] \
-        || shopt -u extdebug
+    # # reset extdebug
+    # [[ -v _ed_keepon ]] \
+    #     || shopt -u extdebug
 }
