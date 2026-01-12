@@ -4,90 +4,88 @@
 #import_func docsh err_msg
 #   || return
 
+: """Handle --long-opts and --key=value command line arguments
+
+    Usage
+
+        longopts <var-name>
+        longopts <optstring> <var-name> [\"\$@\"]
+
+    This function aids argument parsing of long options in shell scripts and
+    functions. By adding simple call to this function within a typical 'while
+    getopts ...' argument parsing loop, both long and short options can be handled
+    by the same case statement.
+
+    The 'var-name' argument refers to the same flag variable as in the \`getopts\`
+    command call. Pass the name, e.g. 'flag' or 'OPT', not the value.
+
+    The string '-:' must be added to the optstring of the \`getopts\` command call.
+    Retain any short option flags in the optstring, which are processed by getopts
+    in the usual way.
+
+    If the optstring argument is supplied, as in the second command form above,
+    it is used to check the option flag received. Longopts checks that the
+    optstring list includes the flag, and that required arguments were provided.
+    If the positional arguments are supplied to longopts, or BASH_ARGV is set,
+    they will be used to obtain a missing argument.
+
+    The optstring format is a space-separated list of long option flags. Flags
+    that require an argument should be annotated with a trailing colon (':'), just
+    as with the getopts optstring. E.g., the optstring 'abc def: ghi' indicates
+    that the --def flag requires an argument, but neither --abc nor --ghi do. The
+    error reporting also mimics getopts; silent error reporting is indicated by
+    the optstring starting with ':', or setting OPTERR=0. In that case, an
+    unrecognized long option is left in OPTARG, and the flag becomes '?'.
+
+    Notes
+
+    - Recall that getopts assigns the current option flag to the var-name
+      variable, and assigns its argument to the OPTARG variable, if applicable.
+
+    - The '-:' string causes getopts to process long options by setting the flag
+      variable to '-' and putting the remainder of the flag string in OPTARG. It
+      is an error if the flag variable is '-', but OPTARG is empty.
+
+      If var-name is not '-' when longopts is called, it silently returns
+      with status code 0 (true). This allows argument parsing for short options
+      to proceed as usual, typically with a case statement.
+
+    - When the command-line argument was of the form '--key=value', longopts
+      sets the flag variable to 'key' and OPTARG to 'value'. For an argument like
+      '--long', the flag variable becomes 'long', and OPTARG is unset.
+
+    Examples
+
+     1. Allow the flag '--aaa' as a synonym for '-a', and '--bbb=arg' for '-b arg'.
+        NB, '--bbb arg' will also work, as long as you use the full form of the
+        longopts call, including the optstring and the positional parameters.
+
+        local flag OPTARG OPTIND=1
+        while getopts ':ab:-:' flag       # <- add '-:' to optstring
+        do
+            longopts flag                 # <- call longopts before the case statement
+            # or
+            longopts ':aaa bbb:' flag \"\$@\"
+
+            case \$flag in
+                ( a | aaa ) _a=1  ;;          # <- long flags added to cases
+                ( b | bbb ) _b=\$OPTARG  ;;
+
+                ( : )  err_msg 2 \"missing argument for -\$OPTARG\"; return ;;
+                ( \\? ) err_msg 3 \"unknown option: '-\$OPTARG'\"; return ;;
+
+                # ^^^ above is adequate if optstring arg was provided to longopts
+                # vvv below is needed if not
+
+                ( * ) err_msg 4 \"unexpected op: '\$flag', '\${OPTARG-}'\"; return  ;;
+            esac
+        done
+"""
+
 longopts() {
 
-    [[ $# -eq 0  || $1 == @(-h|--help) ]] && {
-
-        : """Handle --long-opts and --key=value command line arguments
-
-        Usage
-
-            longopts <var-name>
-            longopts <optstring> <var-name> [\"\$@\"]
-
-        This function aids argument parsing of long options in shell scripts and
-        functions. By adding simple call to this function within a typical 'while
-        getopts ...' argument parsing loop, both long and short options can be handled
-        by the same case statement.
-
-        The 'var-name' argument refers to the same flag variable as in the \`getopts\`
-        command call. Pass the name, e.g. 'flag' or 'OPT', not the value.
-
-        The string '-:' must be added to the optstring of the \`getopts\` command call.
-        Retain any short option flags in the optstring, which are processed by getopts
-        in the usual way.
-
-        If the optstring argument is supplied to longopts, it will be used to check
-        the option flag that was received. It checks that the optstring list includes
-        the flag, and that required arguments were provided. If the positional
-        arguments are supplied to longopts, or BASH_ARGV is set, they will be used
-        to obtain a missing argument.
-
-        The optstring format is a space-separated list of long option flags. Flags that
-        require an argument should be annotated with a trailing colon (':'), just as
-        with the getopts optstring. E.g., the optstring 'abc def: ghi' indicates that
-        the --def flag requires an argument, but neither --abc nor --ghi do.
-
-        Notes
-
-          - Recall that getopts assigns the current option flag to the var-name
-            variable, and assigns its argument to the OPTARG variable, if applicable.
-
-          - The '-:' string causes getopts to process long options by setting the flag
-            variable to '-' and putting the remainder of the flag string in OPTARG. It
-            is an error if the flag variable is '-', but OPTARG is empty.
-
-            If var-name is not '-' when longopts is called, it silently returns
-            with status code 0 (true). This allows argument parsing for short options
-            to proceed as usual, typically with a case statement.
-
-          - When the command-line argument was of the form '--key=value', longopts
-            sets the flag variable to 'key' and OPTARG to 'value'. For an argument like
-            '--long', the flag variable becomes 'long', and OPTARG is unset.
-
-          - The error reporting also mimics getopts, and silent error reporting is
-            indicated by starting the optstring with ':', or setting OPTERR=0.
-
-        Examples
-
-         1. Allow the flag '--aaa' as a synonym for '-a', and '--bbb=arg' for '-b arg'.
-            NB, '--bbb arg' will also work, as long as you use the full form of the
-            longopts call, including the optstring and the positional parameters.
-
-            local flag OPTARG OPTIND=1
-            while getopts ':ab:-:' flag       # <- add '-:' to optstring
-            do
-                longopts flag                 # <- call longopts before the case statement
-                # or
-                longopts ':aaa bbb:' flag \"\$@\"
-
-                case \$flag in
-                    ( a | aaa ) _a=1  ;;          # <- long flags added to cases
-                    ( b | bbb ) _b=\$OPTARG  ;;
-
-                    ( : )  err_msg 2 \"missing argument for -\$OPTARG\"; return ;;
-                    ( \\? ) err_msg 3 \"unknown option: '-\$OPTARG'\"; return ;;
-
-                    # ^^^ above is adequate if optstring arg was provided to longopts
-                    # vvv below is needed if not
-
-                    ( * ) err_msg 4 \"unexpected op: '\$flag', '\${OPTARG-}'\"; return  ;;
-                esac
-            done
-        """
-        docsh -TD
-        return
-    }
+    [[ $# -eq 0  || $1 == @(-h|--help) ]] \
+        && { docsh -TD; return; }
 
     # top priority is to read the FLAG var, and return quickly if not a long opt
     local optstr
