@@ -64,9 +64,9 @@ run_vrb() {
 
     _parse_opts() {
 
-        # check for inherited verbosity
         if [[ ! -v _verb ]]
         then
+            # verbosity was not inherited
             if [[ -v _v ]]
             then
                 _verb=$_v
@@ -173,24 +173,27 @@ run_vrb() {
     _parse_posargs "$@"
     shift $#
 
-    [[ -v _P ]] && {
+    if [[ -v _P ]]
+    then
         # resolve command name
         _rslv_cmd
-    }
+    fi
 
-    local -i ec=0
     local setx
-    [[ _verb -gt 1  && $- != *x* ]] && {
+    if [[ _verb -gt 1  && $- != *x* ]]
+    then
         # enable xtrace
         setx=1
         set -x
-    }
+    fi
 
     # run command line
+    local -i ec=0
     "${env_args[@]}" "${cmd_args[@]}" \
         || { ec=$?; } 2>/dev/null
 
     {
+        # reset xtrace
         [[ -v setx ]] \
             && set +x
     } 2>/dev/null
