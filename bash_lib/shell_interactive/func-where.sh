@@ -89,13 +89,14 @@ func-where() {
             local src_cmd=( builtin source "$src_fn" )
             printf >&2 '%s\n' "${PS4}${src_cmd[*]}"
 
-            # NB, if import_func runs in the sourced file, it will complain about
-            # functrace (from extdebug)
-            shopt -u extdebug
+            # vvv disabled, since extdebug is only in the subshell
+            # # NB, if import_func runs in the sourced file, it will complain about
+            # # functrace (from extdebug)
+            # shopt -u extdebug
 
             "${src_cmd[@]}"
 
-            shopt -s extdebug
+            # shopt -s extdebug
 
         elif [[ -v _e ]]
         then
