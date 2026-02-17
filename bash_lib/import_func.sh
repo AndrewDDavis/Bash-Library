@@ -75,7 +75,7 @@
       # import all source files within a directory tree, e.g. for environment setup
       # in .bashrc
 
-      BASH_FUNCLIB=~/.bashrc.d import_func -a
+      BASH_FUNCLIB=~/.bash_env import_func -a
 """
 
 import_func() {
