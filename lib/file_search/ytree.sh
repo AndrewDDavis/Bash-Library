@@ -1,5 +1,5 @@
-[[ -n $( command -v ytree ) ]] && {
-
+if [[ -n $( command -v ytree ) ]]
+then
     # ytree: classic TUI file manager
     yt() {
 
@@ -32,5 +32,4 @@
             return $?
         fi
     }
-}
-
+fi

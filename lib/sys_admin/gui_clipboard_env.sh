@@ -1,10 +1,16 @@
 # Desktop Clipboard
 
-[[ -n $( command -v xclip ) ]] &&
+if [[ -n $( command -v xclip ) ]]
+then
     alias paste-xclip="xclip -selection clipboard -o"
+fi
 
-[[ -n $( command -v xsel ) ]] &&
+if [[ -n $( command -v xsel ) ]]
+then
     alias paste-xsel="xsel -bo"
+fi
 
-[[ -n $( command -v wl-paste ) ]] &&
+if [[ -n $( command -v wl-paste ) ]]
+then
     alias paste-wl="wl-paste"
+fi

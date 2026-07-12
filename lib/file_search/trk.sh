@@ -1,5 +1,5 @@
-[[ -n $( command -v tracker3 ) ]] && {
-
+if [[ -n $( command -v tracker3 ) ]]
+then
     trk() {
 
         : """Wrapper for tracker3 file search tool and indexer
@@ -102,4 +102,4 @@
             ;;
         esac
     }
-}
+fi
