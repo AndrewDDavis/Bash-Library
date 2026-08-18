@@ -188,7 +188,8 @@ run_vrb() {
     fi
 
     # run command line
-    local -i ec=0
+    { local -i ec=0; } 2>/dev/null
+
     "${env_args[@]}" "${cmd_args[@]}" \
         || { ec=$?; } 2>/dev/null
 
